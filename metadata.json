@@ -1,0 +1,7 @@
+{
+  "name": "techno-vibe",
+  "description": "A real-time mood-adaptive techno system that generates music based on room activity detected via webcam.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
