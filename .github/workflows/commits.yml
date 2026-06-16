@@ -1,0 +1,188 @@
+# Copy this file unchanged into each ongoing target repo:
+#   - minthantkyaw28/SamWise-
+#   - minthantkyaw28/CITED
+#   - minthantkyaw28/Techno-Vibe-AI-Powered-Adaptive-DJ-Controller-
+#
+# Uses the built-in GITHUB_TOKEN (no PAT). Commits count when GIT_EMAIL is verified.
+# CRON times are UTC.
+
+name: Organic commits
+
+on:
+  schedule:
+    - cron: "7 9 * * *"
+    - cron: "23 13 * * *"
+    - cron: "41 19 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  GIT_USER: minthantkyaw28
+  GIT_EMAIL: wanderhobby@gmail.com
+  ZERO_DAY_RATE: "0.35"
+  WEEKDAY_MAX_COMMITS: "12"
+  WEEKEND_MAX_COMMITS: "2"
+
+jobs:
+  commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "${{ env.GIT_USER }}"
+          git config user.email "${{ env.GIT_EMAIL }}"
+
+      - name: Maybe commit realistic changes
+        env:
+          PYTHONUNBUFFERED: "1"
+        run: |
+          python3 <<'PY'
+          import os
+          import random
+          import subprocess
+          from datetime import datetime
+          from pathlib import Path
+
+          ZERO_DAY_RATE = float(os.environ["ZERO_DAY_RATE"])
+          WEEKDAY_MAX_COMMITS = int(os.environ["WEEKDAY_MAX_COMMITS"])
+          WEEKEND_MAX_COMMITS = int(os.environ["WEEKEND_MAX_COMMITS"])
+
+          COMMENT_PREFIXES = {
+              ".py": "# ", ".js": "// ", ".ts": "// ", ".tsx": "// ", ".jsx": "// ",
+              ".php": "// ", ".java": "// ", ".dart": "// ", ".c": "// ", ".cpp": "// ",
+              ".h": "// ", ".css": "/* ", ".scss": "// ", ".md": "<!-- ", ".html": "<!-- ",
+              ".vue": "// ", ".rb": "# ", ".go": "// ", ".rs": "// ", ".sh": "# ",
+          }
+          EDITABLE = set(COMMENT_PREFIXES)
+
+          MESSAGE_POOL = [
+              "fix typo", "update notes", "refactor helper", "add example", "tweak config",
+              "polish docs", "clean up imports", "minor cleanup", "adjust spacing",
+              "rename variable", "simplify logic", "extract function", "inline helper",
+              "bump version comment", "refresh readme snippet", "improve error message",
+              "tighten types", "remove dead code", "format file", "sort imports",
+              "clarify comment", "fix lint warning", "patch edge case", "harden validation",
+              "sync constants", "align naming", "trim whitespace", "reorder blocks",
+              "update sample data", "refresh fixture", "stub new handler", "wire callback",
+              "guard null path", "loosen constraint", "tighten constraint", "cache lookup",
+              "debounce handler", "throttle poll", "retry on failure", "log less noise",
+              "add debug note", "drop unused import", "fix copy", "reword label",
+              "tune default", "expose flag", "hide experimental path", "migrate snippet",
+              "align with spec", "follow-up from review", "address feedback", "spike cleanup",
+              "prototype tweak", "draft notes", "checkpoint save", "scratchpad entry",
+              "housekeeping", "chore: small diff", "chore: maintenance", "docs: clarify step",
+              "style: nits", "test: adjust assertion", "build: tweak script", "ci: noop touch",
+              "refactor: slice module", "perf: micro-opt", "fix: off-by-one", "fix: regression",
+              "feat: tiny addition", "revert partial experiment", "merge conflict cleanup",
+              "resolve todo comment", "update changelog line", "sync from main mentally",
+              "prepare demo branch", "post-demo cleanup",
+          ]
+
+          def git(*args):
+              return subprocess.run(["git", *args], capture_output=True, text=True)
+
+          def is_weekend(d):
+              return d.weekday() >= 5
+
+          def zero_day_rate(d):
+              return ZERO_DAY_RATE + (0.15 if is_weekend(d) else -0.05)
+
+          def commits_this_run(d):
+              """Per-run commit budget; three runs/day approximate daily bands."""
+              if random.random() < zero_day_rate(d):
+                  return 0
+              if is_weekend(d):
+                  if random.random() < 0.70:
+                      return 0
+                  return random.randint(1, min(2, WEEKEND_MAX_COMMITS))
+              if random.random() < 0.25:
+                  return 0
+              return random.randint(1, min(4, WEEKDAY_MAX_COMMITS))
+
+          def list_files():
+              out = git("ls-files")
+              files = []
+              for line in out.stdout.splitlines():
+                  p = Path(line)
+                  if p.suffix.lower() in EDITABLE and p.is_file():
+                      files.append(p)
+              return files
+
+          def marker_for(path, stamp):
+              ext = path.suffix.lower()
+              if ext == ".css":
+                  return f"/* chore: note {stamp} */", "/*"
+              if ext in (".md", ".html"):
+                  return f"<!-- chore: note {stamp} -->", "<!--"
+              prefix = COMMENT_PREFIXES.get(ext, "# ")
+              return f"{prefix}chore: note {stamp}", prefix.strip()
+
+          def toggle_file(path, stamp):
+              marker, tag = marker_for(path, stamp)
+              text = path.read_text(encoding="utf-8", errors="replace")
+              lines = text.splitlines(keepends=True)
+              for i, line in enumerate(lines):
+                  if tag in line and "chore: note" in line:
+                      del lines[i]
+                      path.write_text("".join(lines), encoding="utf-8")
+                      return True
+              if not lines or lines[-1].endswith("\n"):
+                  lines.append(marker + "\n")
+              else:
+                  lines[-1] = lines[-1] + "\n" + marker + "\n"
+              path.write_text("".join(lines), encoding="utf-8")
+              return True
+
+          today = datetime.utcnow().date()
+          n = commits_this_run(today)
+          if n == 0:
+              print("No commits this run (probability skip).")
+              raise SystemExit(0)
+
+          made = 0
+          recent = []
+          for _ in range(n):
+              files = list_files()
+              if files:
+                  target = random.choice(files)
+              else:
+                  target = Path(".activity/log.md")
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  if not target.exists():
+                      target.write_text("# activity log\n", encoding="utf-8")
+              stamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+              toggle_file(target, stamp)
+              git("add", str(target))
+              if git("diff", "--cached", "--quiet").returncode == 0:
+                  continue
+              choices = [m for m in MESSAGE_POOL if m not in recent[-5:]] or MESSAGE_POOL
+              msg = random.choice(choices)
+              recent.append(msg)
+              if git("commit", "-m", msg).returncode == 0:
+                  made += 1
+
+          if made == 0:
+              print("No file changes to commit.")
+          else:
+              print(f"Created {made} commit(s).")
+          PY
+
+      - name: Push to default branch
+        run: |
+          if git rev-parse --abbrev-ref --symbolic-full-name @{u} >/dev/null 2>&1; then
+            ahead=$(git rev-list --count @{u}..HEAD)
+          else
+            ahead=$(git rev-list --count HEAD)
+          fi
+          if [ "$ahead" -gt 0 ]; then
+            git push origin HEAD
+          else
+            echo "Nothing to push."
+          fi
