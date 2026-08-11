@@ -22,4 +22,3 @@ export default defineConfig(({mode}) => {
     },
   };
 });
-// chore: note 2026-08-05T15:33:12
