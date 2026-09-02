@@ -43,4 +43,3 @@
 ---
 
 *Built with ❤️ using Google AI Studio Build.*
-<!-- chore: note 2026-09-02T13:34:26 -->
