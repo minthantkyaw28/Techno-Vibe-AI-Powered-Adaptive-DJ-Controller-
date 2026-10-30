@@ -185,4 +185,3 @@ export async function analyzeVibeWithGemini(base64Image: string): Promise<Gemini
     return null;
   }
 }
-// chore: note 2026-10-29T23:33:53
