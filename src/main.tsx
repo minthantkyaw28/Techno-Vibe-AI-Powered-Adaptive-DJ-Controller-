@@ -8,4 +8,3 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 );
-// chore: note 2026-10-30T15:50:42
